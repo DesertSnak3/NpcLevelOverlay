@@ -24,7 +24,7 @@ This plugin was created to solve these problems by providing at-a-glance informa
 ### 💥 Max Hit Display
 - Shows the maximum damage an NPC can deal in brackets (e.g., `[0-23]`)
 - Helps ironmen and hardcore players avoid potentially deadly encounters
-- Parses complex damage values including multi-hit attacks
+- Data sourced from comprehensive monster database
 
 ### ⚔️ Weakness Icons
 - Displays icons indicating what the NPC is weak to:
@@ -32,11 +32,16 @@ This plugin was created to solve these problems by providing at-a-glance informa
   - **General Magic**: Magic Icon ✨ (shown when weak to magic but no specific element)
   - **Melee Styles**: Stab 🗡️, Slash ⚔️, Crush 🔨
   - **Ranged Weapons**: Arrow 🏹, Bolt 🎯, Dart 📍, General Ranged 🏹
-- Smart magic weakness detection:
-  - If an NPC is weak to both magic and a specific element, shows the elemental rune
-  - If weak to magic without a specific element, shows magic icon
-- Defaults to slash icon when no specific weakness is known
+- Smart weakness detection:
+  - Analyzes NPC defense stats to determine primary weakness
+  - Magic-using NPCs show elemental weaknesses
+  - Defaults to slash icon when no specific weakness is known
 - Icons are scaled to be visible but not intrusive
+
+### ⚠️ Aggression Indicators
+- Shows an icon for aggressive NPCs that will attack players
+- Helps identify potentially dangerous monsters before they engage
+- Particularly useful in wilderness and dangerous areas
 
 ### 📋 NPC Name Display
 - Optionally show NPC names alongside their level
@@ -51,6 +56,7 @@ Access the plugin settings through the RuneLite configuration panel:
 | **Show NPC name** | Display the NPC's name next to its level | Off |
 | **Show Max Hit** | Display the NPC's maximum possible hit | On |
 | **Show Weakness Icon** | Display an icon indicating what the NPC is weak to | On |
+| **Show Aggression Icon** | Display an icon for aggressive NPCs | On |
 
 ### Advanced Color Customization
 The plugin also supports custom color configuration for each level range (hidden by default in settings).
@@ -67,13 +73,16 @@ The plugin also supports custom color configuration for each level range (hidden
 - **Abyssal Demon**: `86 [0-8]` 🗡️ (Level 86, max hit 8, weak to stab)
 - **Blue Dragon**: `111 [0-50]` 💧 (Level 111, max hit 50, weak to water spells)
 - **Guard**: `21 [0-3]` ⚔️ (Level 21, max hit 3, weak to slash)
+- **Aggressive NPC**: `⚠️ 45 [0-5]` ⚔️ (Level 45, max hit 5, weak to slash, aggressive)
 
 ## Data Source
 
-The plugin uses comprehensive NPC data from the OSRS wiki, including:
+The plugin uses comprehensive NPC data from a detailed monster database, including:
 - Combat levels from NPC definitions
-- Maximum hit values from community-sourced data
+- Maximum hit values from verified sources
 - Weakness information based on defensive stats
+- Aggression status for dangerous NPCs
+- All data is stored locally in CSV format for quick access
 
 ## Technical Details
 

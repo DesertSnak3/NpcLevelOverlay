@@ -11,9 +11,10 @@ import java.util.Map;
 @Slf4j
 public class NPCDataLoader {
     
-    private static final String CSV_FILE = "/monsterdata.csv";
+    private static final String CSV_FILE = "/monsters-complete.csv";
     private static final Map<Integer, Integer> npcMaxHitData = new HashMap<>();
     private static final Map<Integer, String> npcWeaknessData = new HashMap<>();
+    private static final Map<Integer, Boolean> npcAggressiveData = new HashMap<>();
     
     static {
         loadData();
@@ -29,48 +30,68 @@ public class NPCDataLoader {
             try (BufferedReader reader = new BufferedReader(new InputStreamReader(inputStream))) {
                 String line;
                 int lineCount = 0;
+                boolean firstLine = true;
+                
                 while ((line = reader.readLine()) != null) {
+                    // Skip header line
+                    if (firstLine) {
+                        firstLine = false;
+                        continue;
+                    }
+                    
                     String[] fields = parseCSVLine(line);
-                    if (fields.length < 13) { // Need at least 13 columns for weakness data
+                    if (fields.length < 27) { // Need at least 27 columns for all data
                         continue;
                     }
                     
-                    // Extract NPC IDs (column 10, 0-indexed)
-                    String npcIdsField = fields[10];
-                    if (npcIdsField == null || npcIdsField.isEmpty() || npcIdsField.equals("?")) {
-                        continue;
-                    }
-                    
-                    // Extract max hit (column 11, 0-indexed)
-                    String maxHitField = fields[11];
-                    Integer maxHit = null;
-                    if (maxHitField != null && !maxHitField.isEmpty() && !maxHitField.equals("?")) {
-                        maxHit = parseMaxHit(maxHitField);
-                    }
-                    
-                    // Extract weakness data
-                    String elementalWeakness = fields[1]; // Column 1: elemental weakness
-                    String primaryWeakness = fields[12];  // Column 12: primary weakness
-                    
-                    String weakness = determineWeakness(elementalWeakness, primaryWeakness);
-                    
-                    // Parse NPC IDs and add to maps
-                    String[] npcIds = npcIdsField.split(",");
-                    for (String idStr : npcIds) {
-                        try {
-                            int id = Integer.parseInt(idStr.trim());
-                            if (maxHit != null && maxHit > 0) {
-                                npcMaxHitData.put(id, maxHit);
+                    try {
+                        // Extract NPC ID (column 0)
+                        int npcId = Integer.parseInt(fields[0].trim());
+                        
+                        // Extract max hit (column 5)
+                        String maxHitField = fields[5];
+                        if (maxHitField != null && !maxHitField.isEmpty() && !maxHitField.equals("?")) {
+                            try {
+                                int maxHit = Integer.parseInt(maxHitField.trim());
+                                if (maxHit > 0) {
+                                    npcMaxHitData.put(npcId, maxHit);
+                                }
+                            } catch (NumberFormatException e) {
+                                // Skip invalid max hit values
                             }
-                            // Always add weakness since determineWeakness now always returns a value
-                            npcWeaknessData.put(id, weakness);
-                            lineCount++;
-                        } catch (NumberFormatException e) {
-                            // Skip invalid IDs
                         }
+                        
+                        // Extract aggressive boolean (column 7)
+                        if (fields.length > 7) {
+                            String aggressiveField = fields[7];
+                            // Only set aggressive to true if the field explicitly contains "true"
+                            // Empty fields or any other value defaults to false
+                            if (aggressiveField != null && aggressiveField.trim().equalsIgnoreCase("true")) {
+                                npcAggressiveData.put(npcId, true);
+                            } else {
+                                npcAggressiveData.put(npcId, false);
+                            }
+                        }
+                        
+                        // Extract weakness data from attack_type and defense stats
+                        String attackType = fields[6]; // Column 6: attack_type
+                        
+                        // Get defense stats (columns 23-27)
+                        int defStab = parseDefense(fields[23]);
+                        int defSlash = parseDefense(fields[24]);
+                        int defCrush = parseDefense(fields[25]);
+                        int defMagic = parseDefense(fields[26]);
+                        int defRanged = parseDefense(fields[27]);
+                        
+                        String weakness = determineWeakness(attackType, defStab, defSlash, defCrush, defMagic, defRanged);
+                        npcWeaknessData.put(npcId, weakness);
+                        
+                        lineCount++;
+                    } catch (NumberFormatException e) {
+                        // Skip rows with invalid IDs
                     }
                 }
-                log.info("Loaded {} NPC entries with max-hit and weakness data from CSV", lineCount);
+                log.info("Loaded {} NPC entries with max-hit, weakness, and aggressive data from CSV", lineCount);
             }
         } catch (IOException e) {
             log.error("Failed to read monster data", e);
@@ -78,160 +99,55 @@ public class NPCDataLoader {
     }
     
     /**
-     * Determine the primary weakness from elemental and combat weaknesses
+     * Parse defense value, handling empty or invalid values
      */
-    private static String determineWeakness(String elemental, String combat) {
-        // Check if NPC has an elemental weakness
-        boolean hasElementalWeakness = false;
-        String elementalType = null;
-        
-        if (elemental != null && !elemental.trim().isEmpty()) {
-            String elem = elemental.trim().toLowerCase();
-            if (elem.equals("fire")) {
-                hasElementalWeakness = true;
-                elementalType = "fire";
-            } else if (elem.equals("water")) {
-                hasElementalWeakness = true;
-                elementalType = "water";
-            } else if (elem.equals("earth")) {
-                hasElementalWeakness = true;
-                elementalType = "earth";
-            } else if (elem.equals("air")) {
-                hasElementalWeakness = true;
-                elementalType = "air";
-            }
+    private static int parseDefense(String defStr) {
+        if (defStr == null || defStr.isEmpty()) {
+            return 0;
+        }
+        try {
+            return Integer.parseInt(defStr.trim());
+        } catch (NumberFormatException e) {
+            return 0;
+        }
+    }
+    
+    /**
+     * Determine the primary weakness based on defense stats and attack type
+     */
+    private static String determineWeakness(String attackType, int defStab, int defSlash, int defCrush, int defMagic, int defRanged) {
+        // First check if the monster uses magic attacks - these often have elemental weaknesses
+        if (attackType != null && attackType.toLowerCase().contains("magic")) {
+            // Check if it has particularly low defense against a specific element
+            // For now, default to fire rune for magic users
+            // In the future, this could be enhanced with more specific elemental data
+            return "fire";
         }
         
-        // Check if NPC has magic weakness
-        boolean hasMagicWeakness = false;
-        if (combat != null && !combat.trim().isEmpty() && !combat.equals("?")) {
-            String combatLower = combat.toLowerCase();
-            if (combatLower.contains("magic")) {
-                hasMagicWeakness = true;
-            }
-        }
+        // Find the lowest defense stat to determine weakness
+        int minDef = Math.min(Math.min(Math.min(defStab, defSlash), defCrush), Math.min(defMagic, defRanged));
         
-        // If NPC has both magic and elemental weakness, show the elemental rune
-        if (hasMagicWeakness && hasElementalWeakness) {
-            return elementalType;
-        }
-        
-        // If NPC has only elemental weakness, show the elemental rune
-        if (hasElementalWeakness) {
-            return elementalType;
-        }
-        
-        // If NPC has only magic weakness (no elemental), show magic icon
-        if (hasMagicWeakness) {
+        // If magic defense is the lowest, check if it's significantly lower
+        if (defMagic == minDef && defMagic < defStab - 10 && defMagic < defSlash - 10 && defMagic < defCrush - 10) {
             return "magic";
         }
         
-        // Otherwise use combat weakness
-        if (combat != null && !combat.trim().isEmpty() && !combat.equals("?")) {
-            // Extract the first weakness if multiple are listed
-            String[] weaknesses = combat.split(",");
-            if (weaknesses.length > 0) {
-                String primary = weaknesses[0].trim().toLowerCase();
-                // Remove any parenthetical content
-                int parenIndex = primary.indexOf('(');
-                if (parenIndex > 0) {
-                    primary = primary.substring(0, parenIndex).trim();
-                }
-                
-                // Map to our icon types
-                if (primary.contains("stab")) return "stab";
-                if (primary.contains("slash")) return "slash";
-                if (primary.contains("crush")) return "crush";
-                if (primary.contains("arrow")) return "arrow";
-                if (primary.contains("bolt")) return "bolt";
-                if (primary.contains("dart")) return "dart";
-                if (primary.contains("ranged")) return "ranged";  // General ranged weakness
-            }
+        // If ranged defense is the lowest
+        if (defRanged == minDef && defRanged < defStab - 5 && defRanged < defSlash - 5 && defRanged < defCrush - 5) {
+            return "ranged";
         }
         
-        // Default to slash if no specific weakness found
+        // Otherwise, determine melee weakness
+        if (defStab == minDef) {
+            return "stab";
+        } else if (defSlash == minDef) {
+            return "slash";
+        } else if (defCrush == minDef) {
+            return "crush";
+        }
+        
+        // Default to slash if no clear weakness
         return "slash";
-    }
-    
-    /**
-     * Parse max hit from the CSV field. Handles various formats like:
-     * - Simple numbers: "10"
-     * - Multiple hits: "10 (melee),20 (magic)"
-     * - Range expressions: "10x2"
-     * @return the highest max hit value found, or null if parsing fails
-     */
-    private static Integer parseMaxHit(String maxHitStr) {
-        if (maxHitStr == null || maxHitStr.isEmpty()) {
-            return null;
-        }
-        
-        // Remove HTML tags if present
-        maxHitStr = maxHitStr.replaceAll("<[^>]+>", " ");
-        
-        int maxValue = -1;
-        
-        // Split by common separators
-        String[] parts = maxHitStr.split("[,;]");
-        
-        for (String part : parts) {
-            // Extract numbers from each part
-            String cleanPart = part.trim();
-            
-            // Handle multiplication expressions like "20x3"
-            if (cleanPart.contains("x")) {
-                String[] multParts = cleanPart.split("x");
-                try {
-                    int base = extractFirstNumber(multParts[0]);
-                    int multiplier = 1;
-                    if (multParts.length > 1) {
-                        multiplier = extractFirstNumber(multParts[1]);
-                    }
-                    if (base > 0 && multiplier > 0) {
-                        maxValue = Math.max(maxValue, base * multiplier);
-                    }
-                } catch (Exception e) {
-                    // Skip invalid expressions
-                }
-            } else {
-                // Extract first number from the part
-                int value = extractFirstNumber(cleanPart);
-                if (value > 0) {
-                    maxValue = Math.max(maxValue, value);
-                }
-            }
-        }
-        
-        return maxValue > 0 ? maxValue : null;
-    }
-    
-    /**
-     * Extract the first number from a string
-     */
-    private static int extractFirstNumber(String str) {
-        if (str == null) return -1;
-        
-        // Remove parentheses content and special characters
-        str = str.replaceAll("\\([^)]*\\)", "").trim();
-        
-        // Extract digits
-        StringBuilder number = new StringBuilder();
-        boolean foundDigit = false;
-        
-        for (char c : str.toCharArray()) {
-            if (Character.isDigit(c)) {
-                number.append(c);
-                foundDigit = true;
-            } else if (foundDigit) {
-                // Stop at first non-digit after finding digits
-                break;
-            }
-        }
-        
-        try {
-            return number.length() > 0 ? Integer.parseInt(number.toString()) : -1;
-        } catch (NumberFormatException e) {
-            return -1;
-        }
     }
     
     /**
@@ -287,5 +203,12 @@ public class NPCDataLoader {
      */
     public static String getWeakness(int npcId) {
         return npcWeaknessData.get(npcId);
+    }
+    
+    /**
+     * Check if a specific NPC is aggressive
+     */
+    public static boolean isAggressive(int npcId) {
+        return npcAggressiveData.getOrDefault(npcId, false);
     }
 } 

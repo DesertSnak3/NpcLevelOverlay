@@ -79,8 +79,12 @@ class NpcLevelOverlay extends Overlay
     // Weakness icon cache
     private static final Map<String, BufferedImage> weaknessIcons = new HashMap<>();
     
+    // Aggression icon
+    private static BufferedImage aggressionIcon;
+    
     static {
         loadWeaknessIcons();
+        loadAggressionIcon();
     }
     
     private static void loadWeaknessIcons() {
@@ -107,6 +111,14 @@ class NpcLevelOverlay extends Overlay
             }
         } catch (Exception e) {
             log.warn("Failed to load weakness icon: " + path, e);
+        }
+    }
+    
+    private static void loadAggressionIcon() {
+        try {
+            aggressionIcon = javax.imageio.ImageIO.read(NpcLevelOverlay.class.getResourceAsStream("/aggression_icon.png"));
+        } catch (Exception e) {
+            log.warn("Failed to load aggression icon", e);
         }
     }
 
@@ -160,28 +172,44 @@ class NpcLevelOverlay extends Overlay
             Point loc = Perspective.getCanvasTextLocation(client, graphics, lp, textBody, npc.getLogicalHeight() + OFFSET_Z);
             if (loc != null)
             {
+                // Calculate total width needed for icons
+                int totalIconWidth = 0;
+                boolean showWeakness = config.showWeaknessIcon();
+                boolean showAggression = config.showAggressionIcon() && NPCDataLoader.isAggressive(npc.getId());
+                
+                String weakness = NPCDataLoader.getWeakness(npc.getId());
+                BufferedImage weaknessIcon = weakness != null && showWeakness ? weaknessIcons.get(weakness) : null;
+                
+                if (weaknessIcon != null) {
+                    totalIconWidth += (int)(weaknessIcon.getWidth() * 0.75) + 4; // Icon width + padding
+                }
+                
+                if (showAggression && aggressionIcon != null) {
+                    totalIconWidth += (int)(aggressionIcon.getWidth() * 0.75) + 4; // Icon width + padding
+                }
+                
+                // Draw weakness icon on the far left
+                int currentX = loc.getX() - totalIconWidth;
+                if (weaknessIcon != null) {
+                    int iconWidth = (int)(weaknessIcon.getWidth() * 0.75);
+                    int iconHeight = (int)(weaknessIcon.getHeight() * 0.75);
+                    int iconY = loc.getY() - iconHeight / 2 - 4;
+                    
+                    graphics.drawImage(weaknessIcon, currentX, iconY, iconWidth, iconHeight, null);
+                    currentX += iconWidth + 4; // Move right for next icon
+                }
+                
+                // Draw aggression icon next (to the left of the text)
+                if (showAggression && aggressionIcon != null) {
+                    int iconWidth = (int)(aggressionIcon.getWidth() * 0.75);
+                    int iconHeight = (int)(aggressionIcon.getHeight() * 0.75);
+                    int iconY = loc.getY() - iconHeight / 2 - 4;
+                    
+                    graphics.drawImage(aggressionIcon, currentX, iconY, iconWidth, iconHeight, null);
+                }
+                
                 // Draw the text
                 OverlayUtil.renderTextLocation(graphics, loc, textBody, colour);
-                
-                // Draw weakness icon if enabled and available
-                if (config.showWeaknessIcon())
-                {
-                    String weakness = NPCDataLoader.getWeakness(npc.getId());
-                    if (weakness != null && weaknessIcons.containsKey(weakness))
-                    {
-                        BufferedImage icon = weaknessIcons.get(weakness);
-                        // Scale down the icon to 75% of original size
-                        int iconWidth = (int)(icon.getWidth() * 0.75);
-                        int iconHeight = (int)(icon.getHeight() * 0.75);
-                        
-                        // Calculate icon position (to the left of the text)
-                        int textWidth = graphics.getFontMetrics().stringWidth(textBody);
-                        int iconX = loc.getX() - iconWidth - 4; // 4px padding
-                        int iconY = loc.getY() - iconHeight / 2 - 4; // Center vertically with text
-                        
-                        graphics.drawImage(icon, iconX, iconY, iconWidth, iconHeight, null);
-                    }
-                }
             }
         }
         return null;

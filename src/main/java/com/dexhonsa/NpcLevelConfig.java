@@ -72,4 +72,14 @@ public interface NpcLevelConfig extends Config
     {
         return true;
     }
+
+    @ConfigItem(
+            keyName = "showAggressionIcon",
+            name = "Show Aggression Icon",
+            description = "Display an icon indicating if the NPC is aggressive."
+    )
+    default boolean showAggressionIcon()
+    {
+        return true;
+    }
 }
