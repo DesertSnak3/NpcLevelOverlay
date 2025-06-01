@@ -28,8 +28,13 @@ This plugin was created to solve these problems by providing at-a-glance informa
 
 ### ⚔️ Weakness Icons
 - Displays icons indicating what the NPC is weak to:
-  - **Elemental**: Fire 🔥, Water 💧, Earth 🌍, Air 💨
-  - **Combat Styles**: Stab 🗡️, Slash ⚔️, Crush 🔨, Magic ✨, Ranged 🏹
+  - **Elemental Magic**: Fire 🔥, Water 💧, Earth 🌍, Air 💨 (shown when weak to specific elements)
+  - **General Magic**: Magic Icon ✨ (shown when weak to magic but no specific element)
+  - **Melee Styles**: Stab 🗡️, Slash ⚔️, Crush 🔨
+  - **Ranged Weapons**: Arrow 🏹, Bolt 🎯, Dart 📍, General Ranged 🏹
+- Smart magic weakness detection:
+  - If an NPC is weak to both magic and a specific element, shows the elemental rune
+  - If weak to magic without a specific element, shows magic icon
 - Defaults to slash icon when no specific weakness is known
 - Icons are scaled to be visible but not intrusive
 

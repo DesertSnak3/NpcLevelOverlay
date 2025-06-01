@@ -109,4 +109,24 @@ public class NPCDataLoaderTest {
         // Verify that slash is indeed being used as default for many NPCs
         assertTrue("Some NPCs should have slash weakness", slashCount > 0);
     }
+    
+    @Test
+    public void testMagicAndElementalWeakness() {
+        // Test Commander Zilyana (ID 2205) - has "Crush,Magic" weakness, no elemental
+        // Should show magic icon since it's magic without specific element
+        String zilyanaWeakness = NPCDataLoader.getWeakness(2205);
+        assertNotNull("Zilyana should have weakness data", zilyanaWeakness);
+        assertEquals("Zilyana should show magic icon (magic without element)", "magic", zilyanaWeakness);
+        
+        // Test NPCs with elemental weaknesses
+        // Black demon (ID 240) has Water elemental weakness
+        String blackDemonWeakness = NPCDataLoader.getWeakness(240);
+        if (blackDemonWeakness != null) {
+            assertEquals("Black demon should show water rune", "water", blackDemonWeakness);
+        }
+        
+        System.out.println("Magic/Elemental weakness test completed");
+        System.out.println("Zilyana (magic, no element): " + zilyanaWeakness);
+        System.out.println("Black demon (water element): " + blackDemonWeakness);
+    }
 } 

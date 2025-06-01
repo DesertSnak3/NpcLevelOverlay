@@ -81,13 +81,49 @@ public class NPCDataLoader {
      * Determine the primary weakness from elemental and combat weaknesses
      */
     private static String determineWeakness(String elemental, String combat) {
-        // Prioritize elemental weakness if present
+        // Check if NPC has an elemental weakness
+        boolean hasElementalWeakness = false;
+        String elementalType = null;
+        
         if (elemental != null && !elemental.trim().isEmpty()) {
             String elem = elemental.trim().toLowerCase();
-            if (elem.equals("fire")) return "fire";
-            if (elem.equals("water")) return "water";
-            if (elem.equals("earth")) return "earth";
-            if (elem.equals("air")) return "air";
+            if (elem.equals("fire")) {
+                hasElementalWeakness = true;
+                elementalType = "fire";
+            } else if (elem.equals("water")) {
+                hasElementalWeakness = true;
+                elementalType = "water";
+            } else if (elem.equals("earth")) {
+                hasElementalWeakness = true;
+                elementalType = "earth";
+            } else if (elem.equals("air")) {
+                hasElementalWeakness = true;
+                elementalType = "air";
+            }
+        }
+        
+        // Check if NPC has magic weakness
+        boolean hasMagicWeakness = false;
+        if (combat != null && !combat.trim().isEmpty() && !combat.equals("?")) {
+            String combatLower = combat.toLowerCase();
+            if (combatLower.contains("magic")) {
+                hasMagicWeakness = true;
+            }
+        }
+        
+        // If NPC has both magic and elemental weakness, show the elemental rune
+        if (hasMagicWeakness && hasElementalWeakness) {
+            return elementalType;
+        }
+        
+        // If NPC has only elemental weakness, show the elemental rune
+        if (hasElementalWeakness) {
+            return elementalType;
+        }
+        
+        // If NPC has only magic weakness (no elemental), show magic icon
+        if (hasMagicWeakness) {
+            return "magic";
         }
         
         // Otherwise use combat weakness
@@ -106,8 +142,10 @@ public class NPCDataLoader {
                 if (primary.contains("stab")) return "stab";
                 if (primary.contains("slash")) return "slash";
                 if (primary.contains("crush")) return "crush";
-                if (primary.contains("magic")) return "magic";
-                if (primary.contains("ranged")) return "ranged";
+                if (primary.contains("arrow")) return "arrow";
+                if (primary.contains("bolt")) return "bolt";
+                if (primary.contains("dart")) return "dart";
+                if (primary.contains("ranged")) return "ranged";  // General ranged weakness
             }
         }
         

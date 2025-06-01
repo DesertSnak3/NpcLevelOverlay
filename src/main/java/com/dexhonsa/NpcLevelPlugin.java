@@ -93,6 +93,10 @@ class NpcLevelOverlay extends Overlay
         loadIcon("slash", "/White_scimitar.png");
         loadIcon("crush", "/White_warhammer.png");
         loadIcon("magic", "/Magic_icon.png");
+        loadIcon("ranged", "/Steel_arrow_5.png");  // Default ranged icon
+        loadIcon("arrow", "/Steel_arrow_5.png");
+        loadIcon("bolt", "/Steel_bolts_5.png");
+        loadIcon("dart", "/Steel_dart.png");
     }
     
     private static void loadIcon(String name, String path) {
