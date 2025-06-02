@@ -15,6 +15,7 @@ public class NPCDataLoader {
     private static final Map<Integer, Integer> npcMaxHitData = new HashMap<>();
     private static final Map<Integer, String> npcWeaknessData = new HashMap<>();
     private static final Map<Integer, Boolean> npcAggressiveData = new HashMap<>();
+    private static final Map<Integer, String> npcElementalWeaknessData = new HashMap<>();
     
     static {
         loadData();
@@ -73,6 +74,16 @@ public class NPCDataLoader {
                             }
                         }
                         
+                        // Extract elemental weakness (column 28)
+                        String elementalWeakness = null;
+                        if (fields.length > 28) {
+                            String elemField = fields[28];
+                            if (elemField != null && !elemField.trim().isEmpty()) {
+                                elementalWeakness = elemField.trim().toLowerCase();
+                                npcElementalWeaknessData.put(npcId, elementalWeakness);
+                            }
+                        }
+                        
                         // Extract weakness data from attack_type and defense stats
                         String attackType = fields[6]; // Column 6: attack_type
                         
@@ -83,7 +94,7 @@ public class NPCDataLoader {
                         int defMagic = parseDefense(fields[26]);
                         int defRanged = parseDefense(fields[27]);
                         
-                        String weakness = determineWeakness(attackType, defStab, defSlash, defCrush, defMagic, defRanged);
+                        String weakness = determineWeakness(attackType, defStab, defSlash, defCrush, defMagic, defRanged, elementalWeakness);
                         npcWeaknessData.put(npcId, weakness);
                         
                         lineCount++;
@@ -115,13 +126,14 @@ public class NPCDataLoader {
     /**
      * Determine the primary weakness based on defense stats and attack type
      */
-    private static String determineWeakness(String attackType, int defStab, int defSlash, int defCrush, int defMagic, int defRanged) {
-        // First check if the monster uses magic attacks - these often have elemental weaknesses
-        if (attackType != null && attackType.toLowerCase().contains("magic")) {
-            // Check if it has particularly low defense against a specific element
-            // For now, default to fire rune for magic users
-            // In the future, this could be enhanced with more specific elemental data
-            return "fire";
+    private static String determineWeakness(String attackType, int defStab, int defSlash, int defCrush, int defMagic, int defRanged, String elementalWeakness) {
+        // First check if there's a specific elemental weakness
+        if (elementalWeakness != null && !elementalWeakness.isEmpty()) {
+            // Valid elemental weaknesses
+            if (elementalWeakness.equals("fire") || elementalWeakness.equals("water") || 
+                elementalWeakness.equals("earth") || elementalWeakness.equals("air")) {
+                return elementalWeakness;
+            }
         }
         
         // Find the lowest defense stat to determine weakness
@@ -129,6 +141,13 @@ public class NPCDataLoader {
         
         // If magic defense is the lowest, check if it's significantly lower
         if (defMagic == minDef && defMagic < defStab - 10 && defMagic < defSlash - 10 && defMagic < defCrush - 10) {
+            // Return general magic if no specific elemental weakness was provided
+            return "magic";
+        }
+        
+        // Check if the monster uses magic attacks but no specific elemental weakness
+        if (attackType != null && attackType.toLowerCase().contains("magic") && (elementalWeakness == null || elementalWeakness.isEmpty())) {
+            // Default to general magic for magic users without specific elemental weakness
             return "magic";
         }
         
