@@ -13,7 +13,6 @@ import java.awt.Color;
 import java.awt.Dimension;
 import java.awt.Graphics2D;
 import javax.inject.Inject;
-import javax.imageio.ImageIO;
 import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.*;
 import net.runelite.api.coords.LocalPoint;
@@ -22,6 +21,7 @@ import net.runelite.client.config.ConfigManager;
 import net.runelite.client.plugins.Plugin;
 import net.runelite.client.plugins.PluginDescriptor;
 import net.runelite.client.ui.overlay.*;
+import net.runelite.client.util.ImageUtil;
 import java.awt.image.BufferedImage;
 import java.util.HashMap;
 import java.util.Map;
@@ -72,14 +72,17 @@ class NpcLevelOverlay extends Overlay
     private static final Color YELLOW = new Color(0xFFFF00);
     private static final Color ORANGE = new Color(0xFF981F);
     private static final Color RED    = new Color(0xFF0000);
+    
+    // Icon scaling factor
+    private static final double ICON_SCALE = 1;
 
     private final Client client;
     private final NpcLevelConfig config;
     
-    // Weakness icon cache
+    // Weakness icon cache - now stores pre-scaled images
     private static final Map<String, BufferedImage> weaknessIcons = new HashMap<>();
     
-    // Aggression icon
+    // Aggression icon - pre-scaled
     private static BufferedImage aggressionIcon;
     
     static {
@@ -103,20 +106,28 @@ class NpcLevelOverlay extends Overlay
         loadIcon("dart", "/Steel_dart.png");
     }
     
-    private static void loadIcon(String name, String path) {
+    private static void loadIcon(String name, String fileName) {
         try {
-            BufferedImage icon = javax.imageio.ImageIO.read(NpcLevelOverlay.class.getResourceAsStream(path));
-            if (icon != null) {
-                weaknessIcons.put(name, icon);
+            BufferedImage originalIcon = ImageUtil.loadImageResource(NpcLevelOverlay.class, fileName);
+            if (originalIcon != null) {
+                int scaledWidth = (int)(originalIcon.getWidth() * ICON_SCALE);
+                int scaledHeight = (int)(originalIcon.getHeight() * ICON_SCALE);
+                BufferedImage scaledIcon = ImageUtil.resizeImage(originalIcon, scaledWidth, scaledHeight);
+                weaknessIcons.put(name, scaledIcon);
             }
         } catch (Exception e) {
-            log.warn("Failed to load weakness icon: " + path, e);
+            log.warn("Failed to load weakness icon: " + fileName, e);
         }
     }
     
     private static void loadAggressionIcon() {
         try {
-            aggressionIcon = javax.imageio.ImageIO.read(NpcLevelOverlay.class.getResourceAsStream("/aggression_icon.png"));
+            BufferedImage originalIcon = ImageUtil.loadImageResource(NpcLevelOverlay.class, "/aggression_icon.png");
+            if (originalIcon != null) {
+                int scaledWidth = (int)(originalIcon.getWidth() * ICON_SCALE);
+                int scaledHeight = (int)(originalIcon.getHeight() * ICON_SCALE);
+                aggressionIcon = ImageUtil.resizeImage(originalIcon, scaledWidth, scaledHeight);
+            }
         } catch (Exception e) {
             log.warn("Failed to load aggression icon", e);
         }
@@ -181,31 +192,27 @@ class NpcLevelOverlay extends Overlay
                 BufferedImage weaknessIcon = weakness != null && showWeakness ? weaknessIcons.get(weakness) : null;
                 
                 if (weaknessIcon != null) {
-                    totalIconWidth += (int)(weaknessIcon.getWidth() * 0.75) + 4; // Icon width + padding
+                    totalIconWidth += weaknessIcon.getWidth() + 4; // Icon width + padding
                 }
                 
                 if (showAggression && aggressionIcon != null) {
-                    totalIconWidth += (int)(aggressionIcon.getWidth() * 0.75) + 4; // Icon width + padding
+                    totalIconWidth += aggressionIcon.getWidth() + 4; // Icon width + padding
                 }
                 
                 // Draw weakness icon on the far left
                 int currentX = loc.getX() - totalIconWidth;
                 if (weaknessIcon != null) {
-                    int iconWidth = (int)(weaknessIcon.getWidth() * 0.75);
-                    int iconHeight = (int)(weaknessIcon.getHeight() * 0.75);
-                    int iconY = loc.getY() - iconHeight / 2 - 4;
+                    int iconY = loc.getY() - weaknessIcon.getHeight() / 2 - 4;
                     
-                    graphics.drawImage(weaknessIcon, currentX, iconY, iconWidth, iconHeight, null);
-                    currentX += iconWidth + 4; // Move right for next icon
+                    graphics.drawImage(weaknessIcon, currentX, iconY, null);
+                    currentX += weaknessIcon.getWidth() + 4; // Move right for next icon
                 }
                 
                 // Draw aggression icon next (to the left of the text)
                 if (showAggression && aggressionIcon != null) {
-                    int iconWidth = (int)(aggressionIcon.getWidth() * 0.75);
-                    int iconHeight = (int)(aggressionIcon.getHeight() * 0.75);
-                    int iconY = loc.getY() - iconHeight / 2 - 4;
+                    int iconY = loc.getY() - aggressionIcon.getHeight() / 2 - 4;
                     
-                    graphics.drawImage(aggressionIcon, currentX, iconY, iconWidth, iconHeight, null);
+                    graphics.drawImage(aggressionIcon, currentX, iconY, null);
                 }
                 
                 // Draw the text
