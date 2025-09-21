@@ -73,18 +73,17 @@ class NpcLevelOverlay extends Overlay
     private static final Color ORANGE = new Color(0xFF981F);
     private static final Color RED    = new Color(0xFF0000);
     
-    // Icon scaling factor
-    private static final double ICON_SCALE = 1;
+    // Icon scaling factor - will be dynamically set from config
 
     private final Client client;
     private final NpcLevelConfig config;
     
-    // Weakness icon cache - now stores pre-scaled images
-    private static final Map<String, BufferedImage> weaknessIcons = new HashMap<>();
-    
-    // Aggression icon - pre-scaled
-    private static BufferedImage aggressionIcon;
-    
+    // Weakness icon cache - stores original images (scaling done at render time)
+    private static final Map<String, BufferedImage> weaknessIconsOriginal = new HashMap<>();
+
+    // Aggression icon - original
+    private static BufferedImage aggressionIconOriginal;
+
     static {
         loadWeaknessIcons();
         loadAggressionIcon();
@@ -105,15 +104,12 @@ class NpcLevelOverlay extends Overlay
         loadIcon("bolt", "/Steel_bolts_5.png");
         loadIcon("dart", "/Steel_dart.png");
     }
-    
+
     private static void loadIcon(String name, String fileName) {
         try {
             BufferedImage originalIcon = ImageUtil.loadImageResource(NpcLevelOverlay.class, fileName);
             if (originalIcon != null) {
-                int scaledWidth = (int)(originalIcon.getWidth() * ICON_SCALE);
-                int scaledHeight = (int)(originalIcon.getHeight() * ICON_SCALE);
-                BufferedImage scaledIcon = ImageUtil.resizeImage(originalIcon, scaledWidth, scaledHeight);
-                weaknessIcons.put(name, scaledIcon);
+                weaknessIconsOriginal.put(name, originalIcon);
             }
         } catch (Exception e) {
             log.warn("Failed to load weakness icon: " + fileName, e);
@@ -124,13 +120,18 @@ class NpcLevelOverlay extends Overlay
         try {
             BufferedImage originalIcon = ImageUtil.loadImageResource(NpcLevelOverlay.class, "/aggression_icon.png");
             if (originalIcon != null) {
-                int scaledWidth = (int)(originalIcon.getWidth() * ICON_SCALE);
-                int scaledHeight = (int)(originalIcon.getHeight() * ICON_SCALE);
-                aggressionIcon = ImageUtil.resizeImage(originalIcon, scaledWidth, scaledHeight);
+                aggressionIconOriginal = originalIcon;
             }
         } catch (Exception e) {
             log.warn("Failed to load aggression icon", e);
         }
+    }
+
+    private BufferedImage scaleIcon(BufferedImage original, double scale) {
+        if (original == null) return null;
+        int scaledWidth = (int)(original.getWidth() * scale);
+        int scaledHeight = (int)(original.getHeight() * scale);
+        return ImageUtil.resizeImage(original, scaledWidth, scaledHeight);
     }
 
     @Inject
@@ -155,15 +156,29 @@ class NpcLevelOverlay extends Overlay
             if (comp == null) continue;
             int npcLevel = comp.getCombatLevel();
             if (npcLevel <= 0) continue;
+            if (npcLevel < config.minLevel()) continue;
+
+            // Check if we should only show NPCs in combat
+            if (config.onlyShowInCombat())
+            {
+                Actor npcTarget = npc.getInteracting();
+                Actor playerTarget = local.getInteracting();
+                boolean inCombat = (npcTarget == local) || (playerTarget == npc);
+                if (!inCombat) continue;
+            }
 
             Color colour = levelColour(npcLevel - playerLevel);
 
-            String textBody;
-            if (config.showName())
+            String textBody = "";
+            if (config.showName() && config.showLevel())
             {
                 textBody = comp.getName() + " (" + npcLevel + ")";
             }
-            else
+            else if (config.showName())
+            {
+                textBody = comp.getName();
+            }
+            else if (config.showLevel())
             {
                 textBody = Integer.toString(npcLevel);
             }
@@ -175,7 +190,7 @@ class NpcLevelOverlay extends Overlay
                 
                 if (maxHit != null && maxHit > 0)
                 {
-                    textBody += " [0-" + maxHit + "]";
+                    textBody += " [" + maxHit + "]";
                 }
             }
 
@@ -183,35 +198,54 @@ class NpcLevelOverlay extends Overlay
             Point loc = Perspective.getCanvasTextLocation(client, graphics, lp, textBody, npc.getLogicalHeight() + OFFSET_Z);
             if (loc != null)
             {
+                // Get icon scale from config
+                double iconScale = config.iconSize().getScale();
+
                 // Calculate total width needed for icons
                 int totalIconWidth = 0;
                 boolean showWeakness = config.showWeaknessIcon();
-                boolean showAggression = config.showAggressionIcon() && NPCDataLoader.isAggressive(npc.getId());
-                
+
+                // Check if NPC will actually be aggressive to the player
+                boolean npcIsAggressive = NPCDataLoader.isAggressive(npc.getId());
+                boolean willAttackPlayer = false;
+
+                if (npcIsAggressive) {
+                    // OSRS aggression formula: if playerLevel > (2 * npcLevel + 1), NPC won't auto-attack
+                    // Example: level 28 hobgoblin won't attack level 57+ players
+                    if (playerLevel <= (2 * npcLevel + 1)) {
+                        willAttackPlayer = true;
+                    }
+                    // TODO: Add support for "always aggressive" NPCs that ignore the level formula
+                }
+
+                boolean showAggression = config.showAggressionIcon() && willAttackPlayer;
+
                 String weakness = NPCDataLoader.getWeakness(npc.getId());
-                BufferedImage weaknessIcon = weakness != null && showWeakness ? weaknessIcons.get(weakness) : null;
-                
+                BufferedImage weaknessIconOriginal = weakness != null && showWeakness ? weaknessIconsOriginal.get(weakness) : null;
+                BufferedImage weaknessIcon = scaleIcon(weaknessIconOriginal, iconScale);
+                BufferedImage aggressionIcon = showAggression ? scaleIcon(aggressionIconOriginal, iconScale) : null;
+
                 if (weaknessIcon != null) {
                     totalIconWidth += weaknessIcon.getWidth() + 4; // Icon width + padding
                 }
-                
-                if (showAggression && aggressionIcon != null) {
+
+                if (aggressionIcon != null) {
                     totalIconWidth += aggressionIcon.getWidth() + 4; // Icon width + padding
                 }
-                
+
                 // Draw weakness icon on the far left
                 int currentX = loc.getX() - totalIconWidth;
                 if (weaknessIcon != null) {
                     int iconY = loc.getY() - weaknessIcon.getHeight() / 2 - 4;
-                    
+
                     graphics.drawImage(weaknessIcon, currentX, iconY, null);
                     currentX += weaknessIcon.getWidth() + 4; // Move right for next icon
                 }
-                
+
                 // Draw aggression icon next (to the left of the text)
-                if (showAggression && aggressionIcon != null) {
+                if (aggressionIcon != null) {
                     int iconY = loc.getY() - aggressionIcon.getHeight() / 2 - 4;
-                    
+
                     graphics.drawImage(aggressionIcon, currentX, iconY, null);
                 }
                 

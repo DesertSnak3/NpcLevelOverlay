@@ -11,6 +11,43 @@ import net.runelite.client.config.ConfigItem;
 @ConfigGroup("npclevel")
 public interface NpcLevelConfig extends Config
 {
+    enum IconSize
+    {
+        XS("Extra Small", 0.5),
+        S("Small", 0.75),
+        M("Medium", 1.0),
+        LG("Large", 1.25);
+
+        private final String name;
+        private final double scale;
+
+        IconSize(String name, double scale)
+        {
+            this.name = name;
+            this.scale = scale;
+        }
+
+        public double getScale()
+        {
+            return scale;
+        }
+
+        @Override
+        public String toString()
+        {
+            return name;
+        }
+    }
+    @ConfigItem(
+            keyName = "showLevel",
+            name = "Show level",
+            description = "Display the NPC's combat level."
+    )
+    default boolean showLevel()
+    {
+        return true;
+    }
+
     @ConfigItem(
             keyName = "showName",
             name = "Show NPC name",
@@ -81,5 +118,35 @@ public interface NpcLevelConfig extends Config
     default boolean showAggressionIcon()
     {
         return true;
+    }
+
+    @ConfigItem(
+            keyName = "iconSize",
+            name = "Icon Size",
+            description = "Set the size of weakness and aggression icons."
+    )
+    default IconSize iconSize()
+    {
+        return IconSize.M;
+    }
+
+    @ConfigItem(
+            keyName = "minLevel",
+            name = "Minimum Level",
+            description = "Only show overlays for NPCs at or above this combat level (0 = show all)."
+    )
+    default int minLevel()
+    {
+        return 0;
+    }
+
+    @ConfigItem(
+            keyName = "onlyShowInCombat",
+            name = "Only show in combat",
+            description = "Only display overlays for NPCs you are currently in combat with."
+    )
+    default boolean onlyShowInCombat()
+    {
+        return false;
     }
 }
