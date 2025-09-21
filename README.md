@@ -22,7 +22,8 @@ This plugin was created to solve these problems by providing at-a-glance informa
   - **Red**: 4+ levels higher (dangerous!)
 
 ### 💥 Max Hit Display
-- Shows the maximum damage an NPC can deal in brackets (e.g., `[0-23]`)
+- Shows the maximum damage an NPC can deal in brackets (e.g., `[23]`)
+- Simplified display shows only the max hit value
 - Helps ironmen and hardcore players avoid potentially deadly encounters
 - Data sourced from comprehensive monster database
 
@@ -38,10 +39,12 @@ This plugin was created to solve these problems by providing at-a-glance informa
   - Defaults to slash icon when no specific weakness is known
 - Icons are scaled to be visible but not intrusive
 
-### ⚠️ Aggression Indicators
-- Shows an icon for aggressive NPCs that will attack players
-- Helps identify potentially dangerous monsters before they engage
-- Particularly useful in wilderness and dangerous areas
+### ⚠️ Smart Aggression Indicators
+- Shows an icon for NPCs that will actually attack you based on combat levels
+- Uses OSRS aggression formula: NPCs stop attacking when your level > (2 × NPC level + 1)
+- Example: Level 28 hobgoblins won't show aggression icon for level 57+ players
+- Helps identify which monsters will actually engage you
+- Particularly useful for planning training spots and safe areas
 
 ### 📋 NPC Name Display
 - Optionally show NPC names alongside their level
@@ -53,13 +56,28 @@ Access the plugin settings through the RuneLite configuration panel:
 
 | Setting | Description | Default |
 |---------|-------------|---------|
+| **Show level** | Display the NPC's combat level | On |
 | **Show NPC name** | Display the NPC's name next to its level | Off |
 | **Show Max Hit** | Display the NPC's maximum possible hit | On |
 | **Show Weakness Icon** | Display an icon indicating what the NPC is weak to | On |
-| **Show Aggression Icon** | Display an icon for aggressive NPCs | On |
+| **Show Aggression Icon** | Display an icon for NPCs that will attack you | On |
+| **Icon Size** | Set the size of weakness and aggression icons (XS/S/M/LG) | M |
+| **Minimum Level** | Only show overlays for NPCs at or above this level | 0 |
+| **Only show in combat** | Only display overlays for NPCs you're fighting | Off |
 
-### Advanced Color Customization
-The plugin also supports custom color configuration for each level range (hidden by default in settings).
+### Advanced Features
+
+#### Filtering Options
+- **Minimum Level Filter**: Set a minimum NPC level to reduce clutter (e.g., set to 7 to hide rats, chickens)
+- **Combat-Only Mode**: Only show overlays for NPCs you're actively fighting
+- **Flexible Display**: Toggle level, name, and max hit independently
+
+#### Icon Customization
+- **Adjustable Icon Size**: Choose from Extra Small (50%), Small (75%), Medium (100%), or Large (125%)
+- **Smart Icon Display**: Icons scale properly to remain visible but not intrusive
+
+#### Color Customization
+- Custom color configuration for each level range (hidden by default in settings)
 
 ## Usage
 
@@ -70,10 +88,11 @@ The plugin also supports custom color configuration for each level range (hidden
 
 ## Examples
 
-- **Abyssal Demon**: `86 [0-8]` 🗡️ (Level 86, max hit 8, weak to stab)
-- **Blue Dragon**: `111 [0-50]` 💧 (Level 111, max hit 50, weak to water spells)
-- **Guard**: `21 [0-3]` ⚔️ (Level 21, max hit 3, weak to slash)
-- **Aggressive NPC**: `⚠️ 45 [0-5]` ⚔️ (Level 45, max hit 5, weak to slash, aggressive)
+- **Abyssal Demon**: `86 [8]` 🗡️ (Level 86, max hit 8, weak to stab)
+- **Blue Dragon**: `111 [50]` 💧 (Level 111, max hit 50, weak to water spells)
+- **Guard**: `21 [3]` ⚔️ (Level 21, max hit 3, weak to slash)
+- **Hobgoblin (to level 56 player)**: `⚠️ 28 [4]` ⚔️ (Shows aggression icon)
+- **Hobgoblin (to level 57+ player)**: `28 [4]` ⚔️ (No aggression icon - won't attack)
 
 ## Data Source
 
