@@ -41,7 +41,7 @@ public class NPCDataLoader {
                     }
                     
                     String[] fields = parseCSVLine(line);
-                    if (fields.length < 27) { // Need at least 27 columns for all data
+                    if (fields.length < 29) { // Need at least 29 columns for all data
                         continue;
                     }
                     
@@ -92,9 +92,11 @@ public class NPCDataLoader {
                         int defSlash = parseDefense(fields[24]);
                         int defCrush = parseDefense(fields[25]);
                         int defMagic = parseDefense(fields[26]);
-                        int defRanged = parseDefense(fields[27]);
+                        int defRangedLight = parseDefense(fields[27]);
+                        int defRangedStandard = parseDefense(fields[28]);
+                        int defRangedHeavy = parseDefense(fields[29]);
                         
-                        String weakness = determineWeakness(attackType, defStab, defSlash, defCrush, defMagic, defRanged, elementalWeakness);
+                        String weakness = determineWeakness(attackType, defStab, defSlash, defCrush, defMagic, defRangedLight, defRangedStandard, defRangedHeavy, elementalWeakness);
                         npcWeaknessData.put(npcId, weakness);
                         
                         lineCount++;
@@ -126,18 +128,35 @@ public class NPCDataLoader {
     /**
      * Determine the primary weakness based on defense stats and attack type
      */
-    private static String determineWeakness(String attackType, int defStab, int defSlash, int defCrush, int defMagic, int defRanged, String elementalWeakness) {
+    private static String determineWeakness(String attackType, int defStab, int defSlash, int defCrush, int defMagic, int defRangedLight, int defRangedStandard, int defRangedHeavy, String elementalWeakness) {
         // First check if there's a specific elemental weakness
         if (elementalWeakness != null && !elementalWeakness.isEmpty()) {
             // Valid elemental weaknesses
-            if (elementalWeakness.equals("fire") || elementalWeakness.equals("water") || 
-                elementalWeakness.equals("earth") || elementalWeakness.equals("air")) {
+            // 1 = Air, 2 = Water, 3 = Earth, 4 = Fire
+            if (elementalWeakness.equals("4") || elementalWeakness.equals("2") ||
+                elementalWeakness.equals("3") || elementalWeakness.equals("1")) {
+
+                // change elemental weakness to corresponding type name
+                switch (elementalWeakness){
+                    case "1":
+                        elementalWeakness = "Air";
+                        break;
+                    case "2":
+                        elementalWeakness = "Water";
+                        break;
+                    case "3":
+                        elementalWeakness = "Earth";
+                        break;
+                    case "4":
+                        elementalWeakness = "Fire";
+                }
+
                 return elementalWeakness;
             }
         }
         
         // Find the lowest defense stat to determine weakness
-        int minDef = Math.min(Math.min(Math.min(defStab, defSlash), defCrush), Math.min(defMagic, defRanged));
+        int minDef = Math.min(Math.min(Math.min(Math.min(defStab, defSlash), defCrush),defMagic), Math.min(defRangedLight,Math.min(defRangedStandard,defRangedHeavy)));
         
         // If magic defense is the lowest, check if it's significantly lower
         if (defMagic == minDef && defMagic < defStab - 10 && defMagic < defSlash - 10 && defMagic < defCrush - 10) {
@@ -152,8 +171,17 @@ public class NPCDataLoader {
         }
         
         // If ranged defense is the lowest
-        if (defRanged == minDef && defRanged < defStab - 5 && defRanged < defSlash - 5 && defRanged < defCrush - 5) {
-            return "ranged";
+        if(defRangedStandard < minDef - 5 || defRangedLight < minDef -5 || defRangedHeavy < minDef - 5) {
+            // what range is lowest
+            if (defRangedStandard <= defRangedLight && defRangedStandard <= defRangedHeavy) {
+                return "ranged";
+            }
+            else if (defRangedLight <= defRangedHeavy) {
+                return "lightranged";
+            }
+            else {
+                return "heavyranged";
+            }
         }
         
         // Otherwise, determine melee weakness

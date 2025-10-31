@@ -100,6 +100,8 @@ class NpcLevelOverlay extends Overlay
         loadIcon("crush", "/White_warhammer.png");
         loadIcon("magic", "/Magic_icon.png");
         loadIcon("ranged", "/Steel_arrow_5.png");  // Default ranged icon
+        loadIcon("heavyranged", "/Steel_bolts_5.png");
+        loadIcon("lightranged", "/Steel_dart.png");
         loadIcon("arrow", "/Steel_arrow_5.png");
         loadIcon("bolt", "/Steel_bolts_5.png");
         loadIcon("dart", "/Steel_dart.png");
