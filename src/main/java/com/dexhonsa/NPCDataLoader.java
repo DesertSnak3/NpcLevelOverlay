@@ -87,7 +87,7 @@ public class NPCDataLoader {
                         // Extract weakness data from attack_type and defense stats
                         String attackType = fields[6]; // Column 6: attack_type
                         
-                        // Get defense stats (columns 23-27)
+                        // Get defense stats (columns 23-29)
                         int defStab = parseDefense(fields[23]);
                         int defSlash = parseDefense(fields[24]);
                         int defCrush = parseDefense(fields[25]);
